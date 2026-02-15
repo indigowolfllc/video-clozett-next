@@ -12,26 +12,29 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 1. 最新の Gemini API エンドポイント（v1を使用）
-      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      // 1. エンドポイントを v1beta に戻し、モデルを flash に固定
+      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `あなたはAI秘書CloZettです。短く気さくに返信して：${event.text}` }]
+            parts: [{ text: `あなたはAI秘書のCloZettです。短く気さくに日本語で返信して：${event.text}` }]
           }]
         })
       });
 
       const aiData = await aiRes.json();
       
-      let aiText = "考えがまとまりませんでした。もう一度送ってみて！";
-      // 成功時のデータ抽出
+      let aiText = "考えがまとまりませんでした。Vercelのログでエラーを確認してください。";
+
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        // 失敗した場合はログに出して原因を特定
-        console.log("Gemini Error Detail:", JSON.stringify(aiData));
+        // ここでエラーの正体をログに焼き付けます
+        console.log("CRITICAL_API_ERROR_DETAIL:", JSON.stringify(aiData));
+        if (aiData.error) {
+          aiText = `Googleエラー: ${aiData.error.message}`;
+        }
       }
 
       // 2. Slackへ返信
@@ -50,7 +53,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('FINAL ERROR:', error);
+    console.error('SERVER_FATAL_ERROR:', error);
     return NextResponse.json({ ok: true });
   }
 }
