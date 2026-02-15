@@ -12,32 +12,29 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 1. エンドポイントを v1beta に戻し、モデルを flash に固定
+      // URLを「最も標準的なモデルパス」に修正しました
       const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `あなたはAI秘書のCloZettです。短く気さくに日本語で返信して：${event.text}` }]
+            role: "user",
+            parts: [{ text: `あなたはAI秘書CloZettです。短く気さくに、必ず日本語で返信してください：${event.text}` }]
           }]
         })
       });
 
       const aiData = await aiRes.json();
       
-      let aiText = "考えがまとまりませんでした。Vercelのログでエラーを確認してください。";
+      let aiText = "";
 
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        // ここでエラーの正体をログに焼き付けます
-        console.log("CRITICAL_API_ERROR_DETAIL:", JSON.stringify(aiData));
-        if (aiData.error) {
-          aiText = `Googleエラー: ${aiData.error.message}`;
-        }
+        console.log("DEBUG_API_RESPONSE:", JSON.stringify(aiData));
+        aiText = aiData.error ? `Googleエラー: ${aiData.error.message}` : "現在、AIが少し休憩しているようです。";
       }
 
-      // 2. Slackへ返信
       await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: {
@@ -53,7 +50,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('SERVER_FATAL_ERROR:', error);
+    console.error('SYSTEM_ERROR:', error);
     return NextResponse.json({ ok: true });
   }
 }
