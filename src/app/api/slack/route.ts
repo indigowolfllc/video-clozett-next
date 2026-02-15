@@ -12,16 +12,28 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 修正：AI Studioの「Gemini 3 Flash」が内部的に参照している安定した識別名を使用
-      const model = "gemini-1.5-flash-8b"; 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      const apiKey = process.env.GEMINI_API_KEY;
+      
+      // ステップ1：利用可能なモデルをリストアップする
+      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+      const listRes = await fetch(listUrl);
+      const listData = await listRes.json();
+      
+      // ステップ2：リストの中から 'generateContent' が可能なモデルを1つ選ぶ
+      // (通常は gemini-1.5-flash または gemini-pro が最初に見つかります)
+      const targetModel = listData.models?.find((m: any) => 
+        m.supportedGenerationMethods.includes("generateContent")
+      )?.name || "models/gemini-pro"; // 見つからない場合のバックアップ
+
+      // ステップ3：見つかったモデルで返信を生成する
+      const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${apiKey}`;
       
       const aiRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `あなたはAI秘書CloZettです。短く気さくに日本語で返信して：${event.text}` }]
+            parts: [{ text: `あなたはAI秘書のCloZettです。短く気さくに、必ず日本語で返信してください：${event.text}` }]
           }]
         })
       });
@@ -33,9 +45,8 @@ export async function POST(req: Request) {
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        // エラー内容を表示。もしこれでも404なら「gemini-pro」に自動フォールバックする仕組みにしています
-        const errorMsg = aiData.error ? aiData.error.message : "応答なし";
-        aiText = `【接続テスト：最終】Google応答: ${errorMsg}`;
+        const errorMsg = aiData.error ? aiData.error.message : "利用可能モデルが見つかりませんでした";
+        aiText = `【自動モデル探索結果】使用試行モデル: ${targetModel} / エラー: ${errorMsg}`;
       }
 
       await fetch('https://slack.com/api/chat.postMessage', {
