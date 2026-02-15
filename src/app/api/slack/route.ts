@@ -11,44 +11,40 @@ export async function POST(req: Request) {
     }
 
     const event = body.event;
+    // Bot自身の発言には反応しない
     if (event && !event.bot_id) {
       const apiKey = process.env.GEMINI_API_KEY;
       
-      // ステップ1：利用可能なモデルをリストアップする
+      // 1. 利用可能なモデルを自動探索
       const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
       const listRes = await fetch(listUrl);
       const listData = await listRes.json();
-      
-      // ステップ2：リストの中から 'generateContent' が可能なモデルを1つ選ぶ
-      // (通常は gemini-1.5-flash または gemini-pro が最初に見つかります)
       const targetModel = listData.models?.find((m: any) => 
         m.supportedGenerationMethods.includes("generateContent")
-      )?.name || "models/gemini-pro"; // 見つからない場合のバックアップ
+      )?.name || "models/gemini-1.5-flash";
 
-      // ステップ3：見つかったモデルで返信を生成する
+      // 2. 指示内容の解析（正本作成・アンカー指示の判別）
+      let promptPrefix = "あなたはAI秘書CloZettです。短く気さくに日本語で返信して：";
+      if (event.text.includes("正本") || event.text.includes("まとめて")) {
+        promptPrefix = "あなたは記録係のCloZettです。これまでの会話の起点・終点を捉え、発想の移ろいや経緯を重視して、ChatGPTに共有するための『正本』として構造化してまとめてください：";
+      }
+
+      // 3. Geminiへのリクエスト
       const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${apiKey}`;
-      
       const aiRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `あなたはAI秘書のCloZettです。短く気さくに、必ず日本語で返信してください：${event.text}` }]
+            parts: [{ text: `${promptPrefix}${event.text}` }]
           }]
         })
       });
 
       const aiData = await aiRes.json();
-      
-      let aiText = "";
+      const aiText = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "すみません、少し考えがまとまりませんでした。";
 
-      if (aiData.candidates && aiData.candidates[0].content) {
-        aiText = aiData.candidates[0].content.parts[0].text;
-      } else {
-        const errorMsg = aiData.error ? aiData.error.message : "利用可能モデルが見つかりませんでした";
-        aiText = `【自動モデル探索結果】使用試行モデル: ${targetModel} / エラー: ${errorMsg}`;
-      }
-
+      // 4. Slackへ返信
       await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: {
@@ -58,6 +54,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           channel: event.channel,
           text: aiText,
+          thread_ts: event.thread_ts || event.ts // スレッド内ならスレッドを維持
         }),
       });
     }
