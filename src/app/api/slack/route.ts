@@ -12,15 +12,16 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 修正：モデル名を「gemini-1.5-flash-latest」に変更（これが現在のGoogleの正解である可能性が高いです）
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      // 修正：AI Studioで選択されている最新モデルの識別名を使用
+      const model = "gemini-2.0-flash-exp"; 
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
       
       const aiRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `あなたはAI秘書のCloZettです。短く気さくに日本語で返信して：${event.text}` }]
+            parts: [{ text: `あなたはAI秘書CloZettです。日本語で短く返信して：${event.text}` }]
           }]
         })
       });
@@ -32,10 +33,8 @@ export async function POST(req: Request) {
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        // エラー内容をより具体的にSlackへ報告
-        const errorCode = aiData.error ? aiData.error.code : "不明";
-        const errorMsg = aiData.error ? aiData.error.message : JSON.stringify(aiData);
-        aiText = `【Google最終検証】コード:${errorCode} / メッセージ:${errorMsg}`;
+        // エラー内容を表示（モデル名が違った場合、ここでまた判明します）
+        aiText = `【デバッグ】Google応答: ${aiData.error ? aiData.error.message : "応答なし"}`;
       }
 
       await fetch('https://slack.com/api/chat.postMessage', {
@@ -53,7 +52,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('SERVER_ERROR:', error);
     return NextResponse.json({ ok: true });
   }
 }
