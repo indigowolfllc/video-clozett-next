@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      console.log("Processing event:", event.type, "from user:", event.user);
+      console.log("Processing CloZett event:", event.type, "from user:", event.user);
 
       // 2. Geminiで返答を作成
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
