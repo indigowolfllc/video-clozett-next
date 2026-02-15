@@ -12,15 +12,15 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 修正：Google AI StudioのAPIキーで、最も確実に通るURL構成
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      // 修正：モデル名を「gemini-1.5-flash-latest」に変更（これが現在のGoogleの正解である可能性が高いです）
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
       
       const aiRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `あなたはAI秘書CloZettです。短く気さくに、日本語で返信してください：${event.text}` }]
+            parts: [{ text: `あなたはAI秘書のCloZettです。短く気さくに日本語で返信して：${event.text}` }]
           }]
         })
       });
@@ -32,9 +32,10 @@ export async function POST(req: Request) {
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        // ここで、Google側が返してきた「本当の理由」を詳細に暴きます
-        const errorMsg = aiData.error ? `${aiData.error.status}: ${aiData.error.message}` : "未知の応答形式";
-        aiText = `【デバッグ報告】Google側で問題が発生：${errorMsg}`;
+        // エラー内容をより具体的にSlackへ報告
+        const errorCode = aiData.error ? aiData.error.code : "不明";
+        const errorMsg = aiData.error ? aiData.error.message : JSON.stringify(aiData);
+        aiText = `【Google最終検証】コード:${errorCode} / メッセージ:${errorMsg}`;
       }
 
       await fetch('https://slack.com/api/chat.postMessage', {
