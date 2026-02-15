@@ -12,8 +12,8 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 1. Gemini APIへのリクエスト (構造を厳密に修正)
-      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      // 1. 最新の Gemini API エンドポイント（v1を使用）
+      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -25,15 +25,16 @@ export async function POST(req: Request) {
 
       const aiData = await aiRes.json();
       
-      // 2. 返答の抽出（より安全な書き方に変更）
       let aiText = "考えがまとまりませんでした。もう一度送ってみて！";
+      // 成功時のデータ抽出
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        console.error("Gemini Error Detail:", JSON.stringify(aiData));
+        // 失敗した場合はログに出して原因を特定
+        console.log("Gemini Error Detail:", JSON.stringify(aiData));
       }
 
-      // 3. Slackへ返信
+      // 2. Slackへ返信
       await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: {
