@@ -12,13 +12,15 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 修正: エンドポイントを最も拒絶されにくい「v1beta/models/gemini-1.5-flash:generateContent」に完全固定
-      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      // 修正：Google AI StudioのAPIキーで、最も確実に通るURL構成
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      
+      const aiRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `あなたはAI秘書CloZettです。短く気さくに、必ず日本語で返信してください：${event.text}` }]
+            parts: [{ text: `あなたはAI秘書CloZettです。短く気さくに、日本語で返信してください：${event.text}` }]
           }]
         })
       });
@@ -30,9 +32,9 @@ export async function POST(req: Request) {
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        // まだエラーが出る場合は、エラーメッセージをより詳しく抽出
-        const errorMsg = aiData.error ? aiData.error.message : "不明な応答";
-        aiText = `Google詳細エラー: ${errorMsg}`;
+        // ここで、Google側が返してきた「本当の理由」を詳細に暴きます
+        const errorMsg = aiData.error ? `${aiData.error.status}: ${aiData.error.message}` : "未知の応答形式";
+        aiText = `【デバッグ報告】Google側で問題が発生：${errorMsg}`;
       }
 
       await fetch('https://slack.com/api/chat.postMessage', {
