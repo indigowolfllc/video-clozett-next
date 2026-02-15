@@ -12,8 +12,8 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // 1. 最新安定版 v1 と、最新識別子 gemini-1.5-flash-latest を使用
-      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      // 修正: エンドポイントを最も拒絶されにくい「v1beta/models/gemini-1.5-flash:generateContent」に完全固定
+      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -30,11 +30,11 @@ export async function POST(req: Request) {
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        // 万が一の失敗時、Googleからの「生の声」をそのままSlackに投げて正体を暴きます
-        aiText = `Google応答解析: ${JSON.stringify(aiData).substring(0, 100)}`;
+        // まだエラーが出る場合は、エラーメッセージをより詳しく抽出
+        const errorMsg = aiData.error ? aiData.error.message : "不明な応答";
+        aiText = `Google詳細エラー: ${errorMsg}`;
       }
 
-      // 2. Slackへ返答を届ける
       await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: {
