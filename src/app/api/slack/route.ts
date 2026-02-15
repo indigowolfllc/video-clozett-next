@@ -12,15 +12,12 @@ export async function POST(req: Request) {
 
     const event = body.event;
     if (event && !event.bot_id) {
-      // URLを「最も標準的なモデルパス」に修正しました
+      // 修正ポイント：モデル名を URL の一部としてではなく、最もシンプルなパスで試行
       const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{ text: `あなたはAI秘書CloZettです。短く気さくに、必ず日本語で返信してください：${event.text}` }]
-          }]
+          contents: [{ parts: [{ text: `あなたはAI秘書のCloZettです。短く気さくに日本語で返信して：${event.text}` }] }]
         })
       });
 
@@ -31,8 +28,21 @@ export async function POST(req: Request) {
       if (aiData.candidates && aiData.candidates[0].content) {
         aiText = aiData.candidates[0].content.parts[0].text;
       } else {
-        console.log("DEBUG_API_RESPONSE:", JSON.stringify(aiData));
-        aiText = aiData.error ? `Googleエラー: ${aiData.error.message}` : "現在、AIが少し休憩しているようです。";
+        // もし flash がダメなら、安定版の pro を即座に試す（二段構え）
+        const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `あなたはAI秘書のCloZettです。日本語で短く：${event.text}` }] }]
+          })
+        });
+        const fallbackData = await fallbackRes.json();
+        
+        if (fallbackData.candidates) {
+          aiText = fallbackData.candidates[0].content.parts[0].text;
+        } else {
+          aiText = `Google最終エラー: ${fallbackData.error?.message || "接続失敗"}`;
+        }
       }
 
       await fetch('https://slack.com/api/chat.postMessage', {
