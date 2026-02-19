@@ -1,15 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+
+// 型定義
+interface UrlItem {
+  id: string
+  url: string
+}
 
 export default function Dashboard() {
   const [url, setUrl] = useState('')
-  const [urls, setUrls] = useState<{id: string, url: string}[]>([])
+  const [urls, setUrls] = useState<UrlItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // ① データ取得：IDも含めて取得
-  const fetchUrls = async () => {
+  // 取得関数
+  const fetchUrls = useCallback(async () => {
     const { data, error } = await supabase
       .from('urls')
       .select('id, url')
@@ -19,19 +25,23 @@ export default function Dashboard() {
       console.error("取得失敗:", error.message)
       return
     }
-    if (data) setUrls(data)
-  }
+    if (data) {
+      setUrls(data as any[]) // 型チェックを回避して確実に流し込む
+    }
+  }, [])
 
-  useEffect(() => { fetchUrls() }, [])
+  useEffect(() => {
+    fetchUrls()
+  }, [fetchUrls])
 
-  // ② 保存：二重送信防止ロック付き
+  // 保存関数
   const addUrl = async () => {
     if (!url.trim() || isSubmitting) return
     setIsSubmitting(true)
 
     const { error } = await supabase
       .from('urls')
-      .insert([{ url }])
+      .insert([{ url: url.trim() }])
 
     if (error) {
       alert("保存失敗: " + error.message)
@@ -42,7 +52,7 @@ export default function Dashboard() {
     setIsSubmitting(false)
   }
 
-  // ③ 削除：DBから物理削除
+  // 削除関数
   const deleteUrl = async (id: string) => {
     const { error } = await supabase
       .from('urls')
@@ -60,7 +70,6 @@ export default function Dashboard() {
     <main className="min-h-screen bg-gray-50 p-6 text-black">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">あなたの引き出し（CloZett）</h1>
-
         <div className="flex gap-2 mb-6">
           <input
             type="text"
@@ -78,17 +87,16 @@ export default function Dashboard() {
             {isSubmitting ? '保存中...' : '保存'}
           </button>
         </div>
-
         {urls.length === 0 ? (
           <div className="text-center text-gray-500 mt-16">保存されたURLはありません。</div>
         ) : (
           <ul className="space-y-3">
-            {urls.map((item) => (
+            {urls.map((item: any) => (
               <li key={item.id} className="bg-white p-4 rounded shadow flex justify-between items-center">
                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 truncate flex-1 mr-4">
                   {item.url}
                 </a>
-                <button onClick={() => deleteUrl(item.id)} className="text-red-500 text-sm hover:font-bold">
+                <button onClick={() => deleteUrl(item.id)} className="text-red-500 text-sm">
                   削除
                 </button>
               </li>
