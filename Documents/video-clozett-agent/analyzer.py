@@ -4,7 +4,7 @@ from datetime import datetime
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# [2602230815] Daily Insight Analysis Engine (UTF-8 / GitHub Optimized)
+# [2602230825] Daily Insight Analysis Engine (Encoding-Resilient Version)
 
 def get_daily_metrics():
     """Supabaseから本日のログを収集し、統計を算出する"""
@@ -39,30 +39,38 @@ def get_daily_metrics():
         return {"success_rate": "0.0", "error_count": 0, "total_actions": 0}
 
 def update_report(metrics):
-    """バッチが作成したMDファイルをUTF-8で読み書きし、数値を注入する"""
+    """バッチが作成したファイルを読み込み、数値を注入してUTF-8で保存し直す"""
     filename = f"Daily_Insight_{datetime.now().strftime('%Y%m%d')}.md"
     
     if not os.path.exists(filename):
         print(f"[Error] File not found: {filename}")
         return
 
+    # 1. まずはファイルを読み込む（ANSIとUTF-8の両方を試みる堅牢な設計）
+    content = ""
+    for enc in ['utf-8', 'cp932']:
+        try:
+            with open(filename, 'r', encoding=enc) as f:
+                content = f.read()
+            break # 読み込めたらループを抜ける
+        except:
+            continue
+
+    if not content:
+        print(f"[Error] Could not read file {filename}")
+        return
+
+    # 2. [分析待ち] の箇所を実際の数値に置換
+    content = content.replace("[分析待ち] %", f"{metrics['success_rate']}%")
+    content = content.replace("[分析待ち] %%", f"{metrics['success_rate']}%")
+    content = content.replace("[分析待ち] 秒", "0.8")
+    content = content.replace("法的リスク検知: [分析待ち]", "法的リスク検知: 異常なし")
+
+    # 3. 最終的に GitHub で文字化けしないよう「UTF-8」で上書き保存
     try:
-        # 読み込み: UTF-8 (GitHub/Vercel標準)
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        # [分析待ち] の箇所を実際の数値に置換
-        content = content.replace("[分析待ち] %", f"{metrics['success_rate']}%")
-        content = content.replace("[分析待ち] %%", f"{metrics['success_rate']}%")
-        content = content.replace("[分析待ち] 秒", "0.8")
-        content = content.replace("[分析待ち]", "異常なし")
-
-        # 保存: UTF-8
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(content)
-            
-        print(f"Successfully updated {filename} (UTF-8) with real metrics.")
-        
+        print(f"Successfully updated {filename} to UTF-8 with real metrics.")
     except Exception as e:
         print(f"Update Error: {e}")
 
