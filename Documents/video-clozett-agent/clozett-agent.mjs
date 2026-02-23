@@ -1,63 +1,57 @@
-﻿import fetch from 'node-fetch';
-global.Headers = global.Headers || (await import('node-fetch')).Headers;
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 
-dotenv.config({ path: '.env.local' });
-
-async function sendSlack(message) {
-  try {
-    await fetch(process.env.SLACK_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: message })
-    });
-  } catch (e) { console.error('Slack送信失敗:', e.message); }
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '.env.local') });
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-let isSentToday = false; 
 
-async function poll() {
-  const now = new Date();
-  
-  // ⏰ 18:00ちょうどに一度だけ実行するロジック
-  if (now.getHours() === 18 && now.getMinutes() === 0) {
-    if (!isSentToday) {
-      console.log("⏰ 18:00になりました。フルスペック・レポートを送信中...");
-      const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-      const filename = `Daily_Insight_${dateStr}.md`;
-      
-      if (fs.existsSync(filename)) {
-        const content = fs.readFileSync(filename, 'utf-8');
-        await sendSlack(`📝 【Daily Business Report】\n\n${content}`);
-        console.log('✅ Slack送信完了');
-        isSentToday = true; 
-      }
-    }
-  } else {
-    // 18:01以降になったらフラグをリセットして翌日に備える
-    isSentToday = false; 
-  }
+async function startAutonomousCycle() {
+    console.log("🕵️ 自律パトロール開始：Geminiからの指令を24時間監視します...");
 
-  // 自動書き換え指示のチェック (Supabase連携)
-  try {
-    const { data: inst } = await supabase.from('system_instructions').select('*').eq('status', 'pending').limit(1).single();
-    if (inst) {
-      console.log('🚀 コード自動書き換えを実行中:', inst.file_path);
-      fs.writeFileSync(path.join(process.cwd(), inst.file_path), inst.code_content);
-      await supabase.from('system_instructions').update({ status: 'completed' }).eq('id', inst.id);
-    }
-  } catch (e) {}
+    // 起動直後に「生存報告」をSlackへ飛ばす（自発的行動のテスト）
+    await sendSlack("🚀 **自律システム覚醒**\n監視ルートが正常に確立されました。これよりGeminiの指示を待機します。");
+
+    setInterval(async () => {
+        try {
+            // 1. DBから指示を取得
+            const { data: tasks } = await supabase.from('system_instructions')
+                .select('*').eq('status', 'pending').order('created_at', { ascending: true }).limit(1);
+
+            if (tasks && tasks.length > 0) {
+                const task = tasks[0];
+                console.log(`🎯 指示受信: ${task.file_path}`);
+                
+                // 作業開始をSlackへ報告（あなたの要望：作業の可視化）
+                await sendSlack(`🛠️ **作業開始**\n指示『${task.file_path}』の適用を開始します。`);
+
+                const targetPath = path.resolve(__dirname, task.file_path);
+                if (fs.existsSync(targetPath)) fs.copyFileSync(targetPath, targetPath + '.bak');
+                fs.writeFileSync(targetPath, task.code_content);
+
+                await supabase.from('system_instructions').update({ status: 'completed' }).eq('id', task.id);
+                
+                await sendSlack(`✅ **作業完了**\n『${task.file_path}』を正常に更新しました。`);
+            } else {
+                process.stdout.write(".");
+            }
+        } catch (e) {
+            console.error("Error:", e.message);
+        }
+    }, 10000);
 }
 
-async function init() {
-  console.log('🕵️ 自律監視エージェント V4.2 起動完了');
-  console.log('   -> 毎日 18:00 に全20項目の経営リポートを自動配信します。');
-  await sendSlack("🚀 システムが【18:00定刻報告モード】で正常に起動しました。");
+async function sendSlack(text) {
+    if (!process.env.SLACK_WEBHOOK_URL) return;
+    try {
+        await fetch(process.env.SLACK_WEBHOOK_URL, {
+            method: 'POST',
+            body: JSON.stringify({ text: `[${new Date().toLocaleTimeString()}] ${text}` })
+        });
+    } catch (e) { console.error("Slack Error:", e.message); }
 }
 
-init();
-setInterval(poll, 10000); // 10秒ごとに時計をチェック
+startAutonomousCycle();
