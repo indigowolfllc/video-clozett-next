@@ -23,10 +23,10 @@ let isSentToday = false;
 async function poll() {
   const now = new Date();
   
-  // 18:00ちょうどに一度だけ実行するロジック [cite: 2026-02-23]
+  // ⏰ 18:00ちょうどに一度だけ実行するロジック
   if (now.getHours() === 18 && now.getMinutes() === 0) {
     if (!isSentToday) {
-      console.log("⏰ 18:00になりました。本日のフルレポートを送信します...");
+      console.log("⏰ 18:00になりました。フルスペック・レポートを送信中...");
       const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
       const filename = `Daily_Insight_${dateStr}.md`;
       
@@ -38,13 +38,15 @@ async function poll() {
       }
     }
   } else {
-    isSentToday = false; // 18時以外はフラグを戻す
+    // 18:01以降になったらフラグをリセットして翌日に備える
+    isSentToday = false; 
   }
 
-  // 自動書き換え指示のチェック (Memory準拠) [cite: 2026-02-01]
+  // 自動書き換え指示のチェック (Supabase連携)
   try {
     const { data: inst } = await supabase.from('system_instructions').select('*').eq('status', 'pending').limit(1).single();
     if (inst) {
+      console.log('🚀 コード自動書き換えを実行中:', inst.file_path);
       fs.writeFileSync(path.join(process.cwd(), inst.file_path), inst.code_content);
       await supabase.from('system_instructions').update({ status: 'completed' }).eq('id', inst.id);
     }
@@ -52,10 +54,10 @@ async function poll() {
 }
 
 async function init() {
-  console.log('🕵️ 自律監視エージェント(V4.2) 本番モード稼働中...');
-  console.log('   -> 毎日18:00に最新のレポートを自動配信します。');
-  await sendSlack("🚀 システムが【18:00自動報告モード】で起動しました。");
+  console.log('🕵️ 自律監視エージェント V4.2 起動完了');
+  console.log('   -> 毎日 18:00 に全20項目の経営リポートを自動配信します。');
+  await sendSlack("🚀 システムが【18:00定刻報告モード】で正常に起動しました。");
 }
 
 init();
-setInterval(poll, 10000);
+setInterval(poll, 10000); // 10秒ごとに時計をチェック
