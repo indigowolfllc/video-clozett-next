@@ -24,3 +24,9 @@ jobs:
             "ad_clicks": 150,
             "ad_revenue": 45.20
           }'
+      - name: Send KPI to Slack
+        run: |
+          curl -X POST \
+          -H "Content-type: application/json" \
+          --data "{\"text\":\"📊 Daily KPI Updated Successfully\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
