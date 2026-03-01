@@ -1,48 +1,16 @@
-name: Daily KPI
+name: Test Supabase + Slack
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * *"   # 毎日UTC 0:00実行（日本時間9:00）
 
 jobs:
-  daily-kpi:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      # ① SupabaseにKPIをINSERT（例）
-      - name: Insert KPI to Supabase
-        run: |
-          curl -X POST \
-          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Content-Type: application/json" \
-          -d '{
-                "youtube_views": 1520,
-                "ad_revenue": 320.50,
-                "stripe_revenue": 12000,
-                "cost": 85.30
-              }' \
-          "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/rest/v1/kpi"
-
-      # ② 最新KPIを取得
-      - name: Fetch Latest KPI
-        id: fetch_kpi
-        run: |
-          RESPONSE=$(curl -s \
-          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-          "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/rest/v1/kpi?select=*&order=created_at.desc&limit=1")
-
-          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
-
-      # ③ Slackに送信
-      - name: Send KPI to Slack
+      - name: Send Test to Slack
         run: |
           curl -X POST \
           -H "Content-type: application/json" \
-          --data "{\"text\":\"📊 Daily KPI\n${{ steps.fetch_kpi.outputs.response }}\"}" \
+          --data '{"text":"Workflow is alive 🚀"}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
