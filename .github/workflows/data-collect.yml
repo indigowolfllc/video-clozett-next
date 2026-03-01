@@ -1,0 +1,33 @@
+name: Data Collection
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # UTC 1:00 → 日本10:00
+  workflow_dispatch:
+
+jobs:
+  collect-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Collect Active Users
+        run: |
+          ACTIVE_USERS=$(curl -s https://video-clozett-next.vercel.app/api/active-users)
+          psql ${{ secrets.SUPABASE_DB_URL }} -c "INSERT INTO users_metrics (user_id, metric_date, active_users) VALUES ('system', current_date, $ACTIVE_USERS);"
+
+      - name: Collect Ads Metrics
+        run: |
+          curl -s https://video-clozett-next.vercel.app/api/ads-metrics | jq -c '.[]' | while read row; do
+            AD_ID=$(echo $row | jq -r '.ad_id')
+            IMPRESSIONS=$(echo $row | jq -r '.impressions')
+            CLICKS=$(echo $row | jq -r '.clicks')
+            SPEND=$(echo $row | jq -r '.spend')
+            psql ${{ secrets.SUPABASE_DB_URL }} -c "INSERT INTO ads_metrics (ad_id, impressions, clicks, spend, metric_date) VALUES ('$AD_ID', $IMPRESSIONS, $CLICKS, $SPEND, current_date);"
+          done
+
+      - name: Aggregate KPI
+        run: |
+          TOTAL_USERS=$(psql ${{ secrets.SUPABASE_DB_URL }} -t -c "SELECT SUM(active_users) FROM users_metrics WHERE metric_date=current_date;" | xargs)
+          TOTAL_CLICKS=$(psql ${{ secrets.SUPABASE_DB_URL }} -t -c "SELECT COUNT(*) FROM click_logs WHERE clicked_at::date=current_date;" | xargs)
+          TOTAL_SPEND=$(psql ${{ secrets.SUPABASE_DB_URL }} -t -c "SELECT SUM(spend) FROM ads_metrics WHERE metric_date=current_date;" | xargs)
+          psql ${{ secrets.SUPABASE_DB_URL }} -c "INSERT INTO kpi_metrics (metric_date, active_users, total_clicks, ad_spend) VALUES (current_date, $TOTAL_USERS, $TOTAL_CLICKS, $TOTAL_SPEND);"
