@@ -1,21 +1,22 @@
-name: Health Check
+name: Production Health Check
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # 10分ごと
-  workflow_dispatch:
+    - cron: '0 * * * *'  # 毎時0分（UTC）
+  workflow_dispatch:     # 手動実行も可能
 
 jobs:
-  check:
+  health-check:
     runs-on: ubuntu-latest
 
     steps:
       - name: Check Production URL
+        id: check
         run: |
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://video-clozett-next.vercel.app)
-          echo "Status: $STATUS"
-          if [ "$STATUS" -ne 200 ]; then
-            echo "Site is down!"
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed with status $STATUS"
             exit 1
           fi
 
@@ -23,5 +24,7 @@ jobs:
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"🚨 Production site is DOWN!"}' \
+          --data '{
+            "text": "🚨 Video CloZett Production is DOWN!\nStatus code: '${{ steps.check.outputs.status }}'\nURL: https://video-clozett-next.vercel.app"
+          }' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
