@@ -1,4 +1,4 @@
-name: Test Supabase + Slack
+name: Clean Test
 
 on:
   workflow_dispatch:
@@ -7,10 +7,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-
-      - name: Send Test to Slack
+      - name: Slack Test
         run: |
           curl -X POST \
           -H "Content-type: application/json" \
-          --data '{"text":"Workflow is alive 🚀"}' \
+          --data '{"text":"Clean workflow working 🚀"}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
