@@ -1,0 +1,27 @@
+name: Health Check
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # 10分ごと
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Production URL
+        run: |
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://YOUR_PROJECT.vercel.app)
+          echo "Status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Site is down!"
+            exit 1
+          fi
+
+      - name: Notify Slack on Failure
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🚨 Production site is DOWN!"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
