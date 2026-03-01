@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Check Production URL
         run: |
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://YOUR_PROJECT.vercel.app)
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://video-clozett-next.vercel.app)
           echo "Status: $STATUS"
           if [ "$STATUS" -ne 200 ]; then
             echo "Site is down!"
