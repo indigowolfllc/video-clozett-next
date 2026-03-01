@@ -1,0 +1,26 @@
+name: Daily KPI Insert
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 毎日0時UTC
+  workflow_dispatch:
+
+jobs:
+  insert-kpi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Insert KPI into Supabase
+        run: |
+          curl -X POST \
+          'https://YOUR_PROJECT_ID.supabase.co/rest/v1/daily_kpi' \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "record_date": "'$(date +%F)'",
+            "subscribers": 123,
+            "ad_impressions": 6000,
+            "ad_clicks": 150,
+            "ad_revenue": 45.20
+          }'
