@@ -1,6 +1,8 @@
-name: KPI Insert Test
+name: Daily KPI Insert
 
 on:
+  schedule:
+    - cron: "0 15 * * *"  # 日本時間0:00に実行（UTC 15:00）
   workflow_dispatch:
 
 jobs:
@@ -17,8 +19,8 @@ jobs:
           -H "Prefer: return=minimal" \
           -d '{
             "record_date": "'"$(date +%F)"'",
-            "subscribers": 150,
-            "ad_impressions": 7000,
-            "ad_clicks": 180,
-            "ad_revenue": 45.20
+            "subscribers": 200,
+            "ad_impressions": 8000,
+            "ad_clicks": 210,
+            "ad_revenue": 50.00
           }'
