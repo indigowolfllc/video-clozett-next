@@ -1,32 +1,48 @@
-name: Daily KPI Insert
+name: Daily KPI
 
 on:
-  schedule:
-    - cron: '0 0 * * *'   # 毎日0時UTC
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"   # 毎日UTC 0:00実行（日本時間9:00）
 
 jobs:
-  insert-kpi:
+  daily-kpi:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Insert KPI into Supabase
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ① SupabaseにKPIをINSERT（例）
+      - name: Insert KPI to Supabase
         run: |
           curl -X POST \
-          'https://ybfrgywpjmbacrfplesb.supabase.co/rest/v1/daily_kpi' \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Content-Type: application/json" \
           -d '{
-            "record_date": "'$(date +%F)'",
-            "subscribers": 123,
-            "ad_impressions": 6000,
-            "ad_clicks": 150,
-            "ad_revenue": 45.20
-          }'
+                "youtube_views": 1520,
+                "ad_revenue": 320.50,
+                "stripe_revenue": 12000,
+                "cost": 85.30
+              }' \
+          "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/rest/v1/kpi"
+
+      # ② 最新KPIを取得
+      - name: Fetch Latest KPI
+        id: fetch_kpi
+        run: |
+          RESPONSE=$(curl -s \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+          "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/rest/v1/kpi?select=*&order=created_at.desc&limit=1")
+
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+
+      # ③ Slackに送信
       - name: Send KPI to Slack
         run: |
           curl -X POST \
           -H "Content-type: application/json" \
-          --data "{\"text\":\"📊 Daily KPI Updated Successfully\"}" \
+          --data "{\"text\":\"📊 Daily KPI\n${{ steps.fetch_kpi.outputs.response }}\"}" \
           ${{ secrets.SLACK_WEBHOOK_URL }}
