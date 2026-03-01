@@ -13,7 +13,7 @@ jobs:
       - name: Insert KPI into Supabase
         run: |
           curl -X POST \
-          'https://YOUR_PROJECT_ID.supabase.co/rest/v1/daily_kpi' \
+          'https://ybfrgywpjmbacrfplesb.supabase.co/rest/v1/daily_kpi' \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Content-Type: application/json" \
