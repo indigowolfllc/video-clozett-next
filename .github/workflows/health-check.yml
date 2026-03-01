@@ -2,29 +2,48 @@ name: Production Health Check
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 毎時0分（UTC）
-  workflow_dispatch:     # 手動実行も可能
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   health-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 2
 
     steps:
       - name: Check Production URL
         id: check
         run: |
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://video-clozett-next.vercel.app)
+          URL="https://video-clozett-next.vercel.app"
+
+          RESPONSE=$(curl -o /dev/null -s -w "%{http_code} %{time_total}" --max-time 15 $URL || echo "000 0")
+          STATUS=$(echo $RESPONSE | awk '{print $1}')
+          TIME=$(echo $RESPONSE | awk '{print $2}')
+
           echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "time=$TIME" >> $GITHUB_OUTPUT
+
           if [ "$STATUS" != "200" ]; then
-            echo "Health check failed with status $STATUS"
             exit 1
           fi
 
       - name: Notify Slack on Failure
         if: failure()
         run: |
+          STATUS="${{ steps.check.outputs.status }}"
+          TIME="${{ steps.check.outputs.time }}"
+          URL="https://video-clozett-next.vercel.app"
+
+          if [[ "$STATUS" == 5* ]]; then
+            LEVEL="🚨 CRITICAL (Server Error)"
+          elif [[ "$STATUS" == 4* ]]; then
+            LEVEL="⚠️ WARNING (Client Error)"
+          else
+            LEVEL="❌ UNKNOWN ERROR"
+          fi
+
           curl -X POST -H 'Content-type: application/json' \
-          --data '{
-            "text": "🚨 Video CloZett Production is DOWN!\nStatus code: '${{ steps.check.outputs.status }}'\nURL: https://video-clozett-next.vercel.app"
-          }' \
+          --data "{
+            \"text\": \"$LEVEL\nVideo CloZett Production Issue\nStatus: $STATUS\nResponse Time: ${TIME}s\nURL: $URL\"
+          }" \
           ${{ secrets.SLACK_WEBHOOK_URL }}
