@@ -28,8 +28,10 @@ function verifySlackSignature(
 
 export async function POST(req: NextRequest) {
   const signingSecret = process.env.SLACK_SIGNING_SECRET;
-  if (!signingSecret) {
-    console.error("SLACK_SIGNING_SECRET is missing");
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+  if (!signingSecret || !baseUrl) {
+    console.error("Environment variables missing");
     return new NextResponse("Server misconfigured", { status: 500 });
   }
 
@@ -38,7 +40,13 @@ export async function POST(req: NextRequest) {
   const bodyText = await req.text();
 
   // 署名検証
-  const isValid = verifySlackSignature(bodyText, timestamp, signature, signingSecret);
+  const isValid = verifySlackSignature(
+    bodyText,
+    timestamp,
+    signature,
+    signingSecret
+  );
+
   if (!isValid) {
     console.warn("Invalid Slack signature");
     return new NextResponse("Invalid signature", { status: 400 });
@@ -55,7 +63,7 @@ export async function POST(req: NextRequest) {
   if (body.type === "event_callback") {
     const event = body.event;
 
-    // メッセージイベント（Botの発言は除外）
+    // Bot自身の発言は無視
     if (event.type === "message" && !event.bot_id) {
       console.log("Slack message received:", event);
 
@@ -66,15 +74,41 @@ export async function POST(req: NextRequest) {
         ts: event.ts,
         thread_ts: event.thread_ts || null,
         files: event.files || [],
-        raw: event
       };
 
-      console.log("Payload for AI:", payload);
+      try {
+        // 司令塔へ送信
+        const orchestratorRes = await fetch(
+          `${baseUrl}/api/orchestrator`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
 
-      // ここでAIに渡す処理を実装（後で制作側AIが担当）
-      // await sendToAI(payload);
+        const orchestratorData = await orchestratorRes.json();
+        const replyText =
+          orchestratorData?.reply || "司令塔から応答がありませんでした。";
 
-      return new NextResponse("Message received", { status: 200 });
+        // Slackへ返信
+        await fetch("https://slack.com/api/chat.postMessage", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channel: event.channel,
+            text: replyText,
+            thread_ts: event.thread_ts || event.ts,
+          }),
+        });
+      } catch (err) {
+        console.error("Error calling orchestrator:", err);
+      }
+
+      return new NextResponse("Message processed", { status: 200 });
     }
 
     return new NextResponse("Event received", { status: 200 });
@@ -83,5 +117,4 @@ export async function POST(req: NextRequest) {
   return new NextResponse("OK", { status: 200 });
 }
 
-// App RouterでSlackイベントを確実に受け取るための設定
 export const dynamic = "force-dynamic";
