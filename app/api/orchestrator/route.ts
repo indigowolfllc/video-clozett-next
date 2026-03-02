@@ -1,115 +1,108 @@
-export const runtime = 'nodejs'
+export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 
-function verifySlackSignature(
-  reqBody: string,
-  timestamp: string,
-  signature: string,
-  signingSecret: string
-): boolean {
-  const fiveMinutesAgo = Math.floor(Date.now() / 1000) - 60 * 5;
-  if (Number(timestamp) < fiveMinutesAgo) return false;
+const ORCHESTRATOR_SPEC = `
+あなたはAIチームの司令塔です。
+Slackからの指示を解析し、
+実行が必要な場合はJSON形式で出力してください。
 
-  const sigBasestring = `v0:${timestamp}:${reqBody}`;
-  const mySignature =
-    "v0=" +
-    crypto.createHmac("sha256", signingSecret).update(sigBasestring).digest("hex");
+実行形式は以下のみ：
 
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(mySignature, "utf8"),
-      Buffer.from(signature, "utf8")
-    );
-  } catch {
-    return false;
-  }
+{
+  "action": "create_or_update_file",
+  "path": "app/test/page.tsx",
+  "content": "ファイル内容",
+  "commitMessage": "コミットメッセージ"
 }
 
+通常返信の場合はテキストで返してください。
+`;
+
 export async function POST(req: NextRequest) {
-  const signingSecret = process.env.SLACK_SIGNING_SECRET;
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  try {
+    const body = await req.json();
+    const slackText = body.text || "";
 
-  if (!signingSecret || !baseUrl) {
-    console.error("Environment variables missing");
-    return new NextResponse("Server misconfigured", { status: 500 });
-  }
-
-  const bodyText = await req.text();
-  const body = JSON.parse(bodyText);
-
-  // URL Verification（署名検証不要・Slackからの初回確認用）
-  if (body.type === "url_verification") {
-    return new NextResponse(body.challenge, { status: 200 });
-  }
-
-  const timestamp = req.headers.get("x-slack-request-timestamp") || "";
-  const signature = req.headers.get("x-slack-signature") || "";
-
-  // 署名検証（url_verification以外に適用）
-  const isValid =
-    process.env.NODE_ENV === "development"
-      ? true
-      : verifySlackSignature(bodyText, timestamp, signature, signingSecret);
-
-  if (!isValid) {
-    console.warn("Invalid Slack signature");
-    return new NextResponse("Invalid signature", { status: 400 });
-  }
-
-  if (body.type === "event_callback") {
-    const event = body.event;
-
-    if (event.type === "message" && !event.bot_id) {
-      console.log("Slack message received:", event);
-
-      const payload = {
-        text: event.text || "",
-        user: event.user,
-        channel: event.channel,
-        ts: event.ts,
-        thread_ts: event.thread_ts || null,
-        files: event.files || [],
-      };
-
-      try {
-        const orchestratorRes = await fetch(
-          `${baseUrl}/api/orchestrator`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }
-        );
-
-        const orchestratorData = await orchestratorRes.json();
-        const replyText =
-          orchestratorData?.reply || "司令塔から応答がありませんでした。";
-
-        await fetch("https://slack.com/api/chat.postMessage", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            channel: event.channel,
-            text: replyText,
-            thread_ts: event.thread_ts || event.ts,
-          }),
-        });
-      } catch (err) {
-        console.error("Error calling orchestrator:", err);
-      }
-
-      return new NextResponse("Message processed", { status: 200 });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY missing");
+      return NextResponse.json({ reply: "GEMINI_API_KEY未設定" });
     }
 
-    return new NextResponse("Event received", { status: 200 });
-  }
+    // 🔥 Gemini呼び出し
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${ORCHESTRATOR_SPEC}\n\nユーザーの指示：${slackText}`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.2,
+          },
+        }),
+      }
+    );
 
-  return new NextResponse("OK", { status: 200 });
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Gemini API error:", errorText);
+      return NextResponse.json({ reply: "Gemini APIエラー発生" });
+    }
+
+    const data = await res.json();
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+      "司令塔応答失敗";
+
+    console.log("Gemini reply:", reply);
+
+    // JSONパース試行
+    let parsed: any = null;
+    try {
+      const jsonMatch = reply.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      parsed = null;
+    }
+
+    // 🚀 実行命令がある場合
+    if (parsed?.action === "create_or_update_file") {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+      if (!baseUrl) {
+        console.error("NEXT_PUBLIC_BASE_URL missing");
+        return NextResponse.json({ reply: "BASE_URL未設定" });
+      }
+
+      await fetch(`${baseUrl}/api/executor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed),
+      });
+
+      return NextResponse.json({ reply: "🚀 実行命令を受理しました。" });
+    }
+
+    // 🧠 通常テキスト返信
+    return NextResponse.json({ reply });
+  } catch (err) {
+    console.error("Orchestrator fatal error:", err);
+    return NextResponse.json({ reply: "司令塔内部エラー" });
+  }
 }
 
 export const dynamic = "force-dynamic";

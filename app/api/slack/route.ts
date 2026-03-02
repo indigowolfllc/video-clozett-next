@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse(body.challenge, { status: 200 });
   }
 
-  // 署名検証（url_verification以外に適用）
+  // 署名検証
   const timestamp = req.headers.get("x-slack-request-timestamp") || "";
   const signature = req.headers.get("x-slack-signature") || "";
 
@@ -74,11 +74,15 @@ export async function POST(req: NextRequest) {
       };
 
       try {
+        // ✅ 新しいヘッダーのみ送信（Slackのヘッダーを引き継がない）
         const orchestratorRes = await fetch(
           `${baseUrl}/api/orchestrator`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-Internal-Token": process.env.INTERNAL_API_TOKEN || "internal",
+            },
             body: JSON.stringify(payload),
           }
         );
