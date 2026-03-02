@@ -1,7 +1,8 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
-// Slack署名検証
 function verifySlackSignature(
   reqBody: string,
   timestamp: string,
@@ -39,13 +40,11 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get("x-slack-signature") || "";
   const bodyText = await req.text();
 
-  // 署名検証
-  const isValid = verifySlackSignature(
-    bodyText,
-    timestamp,
-    signature,
-    signingSecret
-  );
+  // 署名検証（開発環境はバイパス・本番は自動的に有効）
+  const isValid =
+    process.env.NODE_ENV === "development"
+      ? true
+      : verifySlackSignature(bodyText, timestamp, signature, signingSecret);
 
   if (!isValid) {
     console.warn("Invalid Slack signature");
@@ -63,7 +62,6 @@ export async function POST(req: NextRequest) {
   if (body.type === "event_callback") {
     const event = body.event;
 
-    // Bot自身の発言は無視
     if (event.type === "message" && !event.bot_id) {
       console.log("Slack message received:", event);
 
@@ -77,7 +75,6 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        // 司令塔へ送信
         const orchestratorRes = await fetch(
           `${baseUrl}/api/orchestrator`,
           {
@@ -91,7 +88,6 @@ export async function POST(req: NextRequest) {
         const replyText =
           orchestratorData?.reply || "司令塔から応答がありませんでした。";
 
-        // Slackへ返信
         await fetch("https://slack.com/api/chat.postMessage", {
           method: "POST",
           headers: {
