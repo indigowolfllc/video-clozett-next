@@ -36,11 +36,18 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Server misconfigured", { status: 500 });
   }
 
+  const bodyText = await req.text();
+  const body = JSON.parse(bodyText);
+
+  // ✅ 署名検証より先にURL Verificationを処理
+  if (body.type === "url_verification") {
+    return new NextResponse(body.challenge, { status: 200 });
+  }
+
+  // 署名検証（url_verification以外に適用）
   const timestamp = req.headers.get("x-slack-request-timestamp") || "";
   const signature = req.headers.get("x-slack-signature") || "";
-  const bodyText = await req.text();
 
-  // 署名検証（開発環境はバイパス・本番は自動的に有効）
   const isValid =
     process.env.NODE_ENV === "development"
       ? true
@@ -51,14 +58,6 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Invalid signature", { status: 400 });
   }
 
-  const body = JSON.parse(bodyText);
-
-  // URL Verification
-  if (body.type === "url_verification") {
-    return new NextResponse(body.challenge, { status: 200 });
-  }
-
-  // Event Callback
   if (body.type === "event_callback") {
     const event = body.event;
 
