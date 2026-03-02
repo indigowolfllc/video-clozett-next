@@ -11,10 +11,13 @@ type UrlItem = {
   created_at: string
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// 🔐 Supabase クライアントを「関数の中」で作る（ビルド時に実行されない）
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  )
+}
 
 export default function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null)
@@ -26,6 +29,8 @@ export default function DashboardPage() {
 
   // 🔐 ログインユーザー取得
   useEffect(() => {
+    const supabase = getSupabase()
+
     const fetchUser = async () => {
       const {
         data: { user },
@@ -45,6 +50,8 @@ export default function DashboardPage() {
 
   // 📦 URL一覧取得（RLS対応）
   const fetchUrls = async (uid: string) => {
+    const supabase = getSupabase()
+
     const { data, error } = await supabase
       .from('urls')
       .select('*')
