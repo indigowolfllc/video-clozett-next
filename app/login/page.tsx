@@ -1,7 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '../../lib/supabaseClient'
+import { createClient } from '@supabase/supabase-js'
+
+// Supabase クライアントを「関数の中」で作る（ビルド時に実行されない）
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  )
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -16,6 +24,8 @@ export default function LoginPage() {
 
     setLoading(true)
     setMessage('送信中...')
+
+    const supabase = getSupabase()
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email,
@@ -36,6 +46,7 @@ export default function LoginPage() {
   return (
     <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>
       <h1>Video CloZett ログイン</h1>
+
       <input
         type="email"
         placeholder="your@email.com"
@@ -43,6 +54,7 @@ export default function LoginPage() {
         onChange={(e) => setEmail(e.target.value)}
         style={{ display: 'block', marginBottom: '12px', padding: '8px', width: '300px' }}
       />
+
       <button
         onClick={handleLogin}
         disabled={loading}
@@ -50,6 +62,7 @@ export default function LoginPage() {
       >
         {loading ? '送信中...' : 'ログインリンクを送信'}
       </button>
+
       <p style={{ marginTop: '20px' }}>{message}</p>
     </div>
   )
