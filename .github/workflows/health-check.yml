@@ -2,7 +2,7 @@ name: Production Health Check
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -14,7 +14,7 @@ jobs:
       - name: Check Production URL
         id: check
         run: |
-          URL="URL="https://video-clozett-next.vercel.app/api/health"
+          URL="https://video-clozett-next.vercel.app/api/health"
 
           RESPONSE=$(curl -o /dev/null -s -w "%{http_code} %{time_total}" --max-time 15 $URL || echo "000 0")
           STATUS=$(echo $RESPONSE | awk '{print $1}')
@@ -23,9 +23,15 @@ jobs:
           echo "status=$STATUS" >> $GITHUB_OUTPUT
           echo "time=$TIME" >> $GITHUB_OUTPUT
 
+          # HTTPステータスチェック
           if [ "$STATUS" != "200" ]; then
+            echo "HTTP Error: $STATUS"
             exit 1
           fi
+
+          # レスポンスタイムチェック（3秒以上で失敗）
+          MAX_TIME=3.0
+          awk -v t="$TIME" -v max="$MAX_TIME" 'BEGIN { if (t > max) exit 1 }'
 
       - name: Notify Slack on Failure
         if: failure()
@@ -39,7 +45,7 @@ jobs:
           elif [[ "$STATUS" == 4* ]]; then
             LEVEL="⚠️ WARNING (Client Error)"
           else
-            LEVEL="❌ UNKNOWN ERROR"
+            LEVEL="⚡ PERFORMANCE ISSUE (Slow Response)"
           fi
 
           curl -X POST -H 'Content-type: application/json' \
