@@ -14,7 +14,7 @@ jobs:
       - name: Check Production URL
         id: check
         run: |
-          URL="https://video-clozett-next.vercel.app/api/health"
+          URL="URL="https://video-clozett-next.vercel.app/api/health"
 
           RESPONSE=$(curl -o /dev/null -s -w "%{http_code} %{time_total}" --max-time 15 $URL || echo "000 0")
           STATUS=$(echo $RESPONSE | awk '{print $1}')
