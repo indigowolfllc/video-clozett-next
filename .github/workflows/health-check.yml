@@ -2,7 +2,7 @@ name: Production Health Check
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # 30分ごと
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:
