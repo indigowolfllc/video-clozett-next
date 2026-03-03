@@ -32,7 +32,7 @@ jobs:
         run: |
           STATUS="${{ steps.check.outputs.status }}"
           TIME="${{ steps.check.outputs.time }}"
-          URL="https://video-clozett-next.vercel.app"
+          URL="https://video-clozett-next.vercel.app/api/health"
 
           if [[ "$STATUS" == 5* ]]; then
             LEVEL="🚨 CRITICAL (Server Error)"
