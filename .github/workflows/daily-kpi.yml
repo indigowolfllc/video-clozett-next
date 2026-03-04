@@ -1,25 +1,21 @@
-name: Slack + Supabase Test
-
+name: Daily KPI Slack Test
 on:
   workflow_dispatch:
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-
       - name: Insert Test Row to Supabase
         run: |
           curl -X POST \
           -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
           -H "Content-Type: application/json" \
-          -d '{"metric_name":"test_metric","metric_value":123}' \
-          "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/rest/v1/kpi"
-
+          -d "{\"record_date\":\"$(date +%F)\",\"metric_name\":\"test\",\"metric_value\":1}" \
+          "${{ secrets.SUPABASE_URL }}/rest/v1/daily_kpi"
       - name: Slack OK
         run: |
           curl -X POST \
           -H "Content-type: application/json" \
-          --data '{"text":"Supabase insert step finished ✅"}' \
+          --data "{\"text\":\"daily_kpi insert OK ✅\"}" \
           ${{ secrets.SLACK_WEBHOOK_URL }}
