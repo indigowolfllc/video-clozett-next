@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: `🤖 【Gemini API 自律報告】\n${report}`
+        text: "🤖 【Gemini API 自律報告】\n" + report
       }),
     });
 

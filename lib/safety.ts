@@ -18,7 +18,7 @@ export function validateExecution(command: any) {
 
   for (const blocked of BLOCKED_PATHS) {
     if (command.path?.includes(blocked)) {
-      throw new Error(`Blocked path detected: ${blocked}`)
+      throw new Error("Blocked path detected: " + blocked)
     }
   }
 
