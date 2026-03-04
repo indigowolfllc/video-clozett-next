@@ -27,7 +27,7 @@ export async function fetchOEmbed(url: string): Promise<OEmbedResult> {
 
   if (endpoint) {
     try {
-      const res = await fetch(`${endpoint}?url=${encodeURIComponent(url)}&format=json`)
+      const res = await fetch(endpoint + "?url=" + encodeURIComponent(url) + "&format=json")
       if (res.ok) {
         const data = await res.json()
         return {

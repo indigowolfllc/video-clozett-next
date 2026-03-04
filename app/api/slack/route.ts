@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       try {
         // ✅ 新しいヘッダーのみ送信（Slackのヘッダーを引き継がない）
         const orchestratorRes = await fetch(
-          `${baseUrl}/api/orchestrator`,
+          baseUrl + "/api/orchestrator",
           {
             method: "POST",
             headers: {

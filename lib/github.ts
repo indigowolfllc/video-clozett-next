@@ -8,13 +8,14 @@ export async function githubCreateOrUpdateFile(command: {
   const repo = process.env.GITHUB_REPO
   const branch = process.env.GITHUB_BRANCH || "main"
 
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${command.path}`
+  const apiUrl = "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + command.path
+
 
   let sha: string | undefined
   try {
     const existing = await fetch(apiUrl, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: "Bearer " + token,
         Accept: "application/vnd.github+json",
       },
     })
@@ -29,7 +30,7 @@ export async function githubCreateOrUpdateFile(command: {
   await fetch(apiUrl, {
     method: "PUT",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: "Bearer " + token,
       Accept: "application/vnd.github+json",
       "Content-Type": "application/json",
     },
