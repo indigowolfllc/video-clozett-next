@@ -6,4 +6,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Skipped
-        run: echo "Not yet implemented"
+        run: echo Not yet implemented
