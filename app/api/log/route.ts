@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const slackStatus = response.status;
     const slackText = await response.text();
 
-    console.log(`📡 Slack Response: ${slackStatus} - ${slackText}`);
+    console.log("Slack Response: " + slackStatus + " - " + slackText);
 
     if (!response.ok) {
       return NextResponse.json({ success: false, slackError: slackText }, { status: slackStatus });
