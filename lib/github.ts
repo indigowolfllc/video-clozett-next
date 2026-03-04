@@ -1,10 +1,14 @@
-export async function githubCreateOrUpdateFile(path: string, content: string, commitMessage: string): Promise<void> {
+export async function githubCreateOrUpdateFile(command: {
+  path: string
+  content: string
+  commitMessage: string
+}): Promise<{ path: string; status: string }> {
   const token = process.env.GITHUB_TOKEN
   const owner = process.env.GITHUB_OWNER
   const repo = process.env.GITHUB_REPO
   const branch = process.env.GITHUB_BRANCH || "main"
 
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${command.path}`
 
   let sha: string | undefined
   try {
@@ -20,7 +24,7 @@ export async function githubCreateOrUpdateFile(path: string, content: string, co
     }
   } catch {}
 
-  const encoded = Buffer.from(content).toString("base64")
+  const encoded = Buffer.from(command.content).toString("base64")
 
   await fetch(apiUrl, {
     method: "PUT",
@@ -30,10 +34,12 @@ export async function githubCreateOrUpdateFile(path: string, content: string, co
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      message: commitMessage,
+      message: command.commitMessage,
       content: encoded,
       branch,
       ...(sha ? { sha } : {}),
     }),
   })
+
+  return { path: command.path, status: "updated" }
 }
