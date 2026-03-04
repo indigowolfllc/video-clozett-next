@@ -12,7 +12,7 @@ function verifySlackSignature(
   const fiveMinutesAgo = Math.floor(Date.now() / 1000) - 60 * 5;
   if (Number(timestamp) < fiveMinutesAgo) return false;
 
-  const sigBasestring = `v0:${timestamp}:${reqBody}`;
+  const sigBasestring = "v0:" + timestamp + ":" + reqBody;
   const mySignature =
     "v0=" +
     crypto.createHmac("sha256", signingSecret).update(sigBasestring).digest("hex");
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         await fetch("https://slack.com/api/chat.postMessage", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+            Authorization: "Bearer " + process.env.SLACK_BOT_TOKEN,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
