@@ -32,6 +32,7 @@ async function callGemini(text: string, apiKey: string): Promise<string | null> 
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: ORCHESTRATOR_SPEC + "\n\nユーザーの指示：" + text }] }],
-          generationConfig: { temperature: 0.2 },
+       body: JSON.stringify({
+  contents: [{ parts: [{ text: ORCHESTRATOR_SPEC + "\n\nユーザーの指示：" + text }] }],
+  generationConfig: { temperature: 0.2 },
+}),
