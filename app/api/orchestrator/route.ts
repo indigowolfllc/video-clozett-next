@@ -47,7 +47,7 @@ async function callGemini(text: string, apiKey: string): Promise<string | null> 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `${ORCHESTRATOR_SPEC}\n\nユーザーの指示：${text}` }] }],
+  contents: [{ parts: [{ text: ORCHESTRATOR_SPEC + "\n\nユーザーの指示：" + text }] }],
           generationConfig: { temperature: 0.2 },
         }),
       }
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed),
       });
-      return NextResponse.json({ reply: `実行命令を受理しました（${usedModel}）` });
+      return NextResponse.json({ reply: "実行命令を受理しました（" + usedModel + "）" });
     }
 
     return NextResponse.json({ reply });
