@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { getLimits } from "@/lib/plan"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,6 +29,15 @@ async function getUserId(): Promise<string | null> {
   return user?.id || null
 }
 
+async function getUserPlan(userId: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("users")
+    .select("plan")
+    .eq("id", userId)
+    .single()
+  return data?.plan || "free"
+}
+
 export async function GET() {
   const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -46,12 +56,15 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { name } = await req.json()
+  const plan = await getUserPlan(userId)
+  const limits = getLimits(plan)
+
   const { count } = await supabaseAdmin
     .from("shelves")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
-  if (count && count >= 3) {
-    return NextResponse.json({ error: "棚の上限に達しました（無料プラン：3つ）" }, { status: 403 })
+  if (count && count >= limits.shelves) {
+    return NextResponse.json({ error: "棚の上限に達しました（プランをアップグレードしてください）" }, { status: 403 })
   }
   const { data, error } = await supabaseAdmin
     .from("shelves")
