@@ -103,8 +103,9 @@ export default function Home() {
 
       {/* フッター */}
       <footer style={{ textAlign: "center", padding: "24px", color: "#999", fontSize: 12, borderTop: "1px solid #eee" }}>
-        © 2025 Video CloZett. All rights reserved.
-      </footer>
+  <p style={{ marginBottom: 8 }}>© 2025 Video CloZett. All rights reserved.</p>
+  <a href="/legal" style={{ color: "#999", textDecoration: "none" }}>利用規約・プライバシーポリシー</a>
+</footer>
     </div>
   )
 }
