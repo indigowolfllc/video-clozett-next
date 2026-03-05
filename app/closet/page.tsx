@@ -34,6 +34,7 @@ export default function ClosetPage() {
   const [editingShelf, setEditingShelf] = useState<string | null>(null)
   const [editingDrawer, setEditingDrawer] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => { loadShelves() }, [])
 
@@ -49,6 +50,7 @@ export default function ClosetPage() {
 
   const loadItems = async (drawer: Drawer) => {
     setSelectedDrawer(drawer)
+    setSidebarOpen(false)
     const res = await fetch("/api/items?drawer_id=" + drawer.id)
     const data = await res.json()
     setItems(data.items || [])
@@ -165,79 +167,105 @@ export default function ClosetPage() {
     window.location.href = "/login"
   }
 
-  return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif" }}>
-      <div style={{ width: 260, background: "#1a1a1a", color: "#fff", padding: 16, overflowY: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: "bold" }}>🗄 CloZett</h2>
-          <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 12 }}>ログアウト</button>
-        </div>
+  const Sidebar = () => (
+    <div style={{ width: 260, background: "#1a1a1a", color: "#fff", padding: 16, overflowY: "auto", height: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={{ fontSize: 18, fontWeight: "bold" }}>🗄 CloZett</h2>
+        <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 12 }}>ログアウト</button>
+      </div>
 
-        {shelves.map((shelf) => (
-          <div key={shelf.id} style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              {editingShelf === shelf.id ? (
+      {shelves.map((shelf) => (
+        <div key={shelf.id} style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            {editingShelf === shelf.id ? (
+              <>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                  style={{ flex: 1, padding: 4, borderRadius: 4, border: "none", fontSize: 13 }} />
+                <button onClick={() => renameShelf(shelf.id)} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>✓</button>
+              </>
+            ) : (
+              <>
+                <span style={{ flex: 1, fontWeight: "bold", fontSize: 14 }}>📦 {shelf.name}</span>
+                <button onClick={() => { setEditingShelf(shelf.id); setEditName(shelf.name) }}
+                  style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 12 }}>✏️</button>
+                <button onClick={() => deleteShelf(shelf.id)}
+                  style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 12 }}>🗑</button>
+              </>
+            )}
+          </div>
+
+          {shelf.drawers.map((drawer) => (
+            <div key={drawer.id} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4, paddingLeft: 12 }}>
+              {editingDrawer === drawer.id ? (
                 <>
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                    style={{ flex: 1, padding: 4, borderRadius: 4, border: "none", fontSize: 13 }} />
-                  <button onClick={() => renameShelf(shelf.id)} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}>✓</button>
+                    style={{ flex: 1, padding: 4, borderRadius: 4, border: "none", fontSize: 12 }} />
+                  <button onClick={() => renameDrawer(drawer.id)} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}>✓</button>
                 </>
               ) : (
                 <>
-                  <span style={{ flex: 1, fontWeight: "bold", fontSize: 14 }}>📦 {shelf.name}</span>
-                  <button onClick={() => { setEditingShelf(shelf.id); setEditName(shelf.name) }}
-                    style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 12 }}>✏️</button>
-                  <button onClick={() => deleteShelf(shelf.id)}
-                    style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 12 }}>🗑</button>
+                  <button onClick={() => loadItems(drawer)}
+                    style={{ flex: 1, textAlign: "left", background: selectedDrawer?.id === drawer.id ? "#444" : "none", color: "#ccc", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 13 }}>
+                    🗂 {drawer.name}
+                  </button>
+                  <button onClick={() => { setEditingDrawer(drawer.id); setEditName(drawer.name) }}
+                    style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 11 }}>✏️</button>
+                  <button onClick={() => deleteDrawer(drawer.id, shelf.id)}
+                    style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 11 }}>🗑</button>
                 </>
               )}
             </div>
+          ))}
 
-            {shelf.drawers.map((drawer) => (
-              <div key={drawer.id} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4, paddingLeft: 12 }}>
-                {editingDrawer === drawer.id ? (
-                  <>
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                      style={{ flex: 1, padding: 4, borderRadius: 4, border: "none", fontSize: 12 }} />
-                    <button onClick={() => renameDrawer(drawer.id)} style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}>✓</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => loadItems(drawer)}
-                      style={{ flex: 1, textAlign: "left", background: selectedDrawer?.id === drawer.id ? "#444" : "none", color: "#ccc", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 13 }}>
-                      🗂 {drawer.name}
-                    </button>
-                    <button onClick={() => { setEditingDrawer(drawer.id); setEditName(drawer.name) }}
-                      style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 11 }}>✏️</button>
-                    <button onClick={() => deleteDrawer(drawer.id, shelf.id)}
-                      style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 11 }}>🗑</button>
-                  </>
-                )}
-              </div>
-            ))}
-
-            <div style={{ paddingLeft: 12, marginTop: 4, display: "flex", gap: 4 }}>
-              <input value={newDrawerName} onChange={(e) => setNewDrawerName(e.target.value)}
-                placeholder="引き出しを追加"
-                style={{ flex: 1, padding: 4, borderRadius: 4, border: "1px solid #444", background: "#333", color: "#fff", fontSize: 12 }} />
-              <button onClick={() => addDrawer(shelf.id)}
-                style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 12 }}>+</button>
-            </div>
-          </div>
-        ))}
-
-        {shelves.length < 3 && (
-          <div style={{ marginTop: 16, display: "flex", gap: 4 }}>
-            <input value={newShelfName} onChange={(e) => setNewShelfName(e.target.value)}
-              placeholder="棚を追加"
+          <div style={{ paddingLeft: 12, marginTop: 4, display: "flex", gap: 4 }}>
+            <input value={newDrawerName} onChange={(e) => setNewDrawerName(e.target.value)}
+              placeholder="引き出しを追加"
               style={{ flex: 1, padding: 4, borderRadius: 4, border: "1px solid #444", background: "#333", color: "#fff", fontSize: 12 }} />
-            <button onClick={addShelf}
+            <button onClick={() => addDrawer(shelf.id)}
               style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 12 }}>+</button>
           </div>
-        )}
-        {shelves.length >= 3 && <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>棚の上限（3つ）に達しました</p>}
+        </div>
+      ))}
+
+      {shelves.length < 3 && (
+        <div style={{ marginTop: 16, display: "flex", gap: 4 }}>
+          <input value={newShelfName} onChange={(e) => setNewShelfName(e.target.value)}
+            placeholder="棚を追加"
+            style={{ flex: 1, padding: 4, borderRadius: 4, border: "1px solid #444", background: "#333", color: "#fff", fontSize: 12 }} />
+          <button onClick={addShelf}
+            style={{ background: "#555", color: "#fff", border: "none", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 12 }}>+</button>
+        </div>
+      )}
+      {shelves.length >= 3 && <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>棚の上限（3つ）に達しました</p>}
+    </div>
+  )
+
+  return (
+    <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif", position: "relative" }}>
+      {/* モバイルハンバーガー */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        style={{ display: "none", position: "fixed", top: 12, left: 12, zIndex: 100, background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 18 }}
+        className="mobile-menu-btn"
+      >
+        ☰
+      </button>
+
+      {/* モバイルオーバーレイ */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{ display: "none", position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90 }}
+          className="mobile-overlay"
+        />
+      )}
+
+      {/* サイドバー */}
+      <div style={{ flexShrink: 0 }} className={sidebarOpen ? "sidebar-open" : "sidebar"}>
+        <Sidebar />
       </div>
 
+      {/* メインエリア */}
       <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
         {selectedDrawer ? (
           <>
@@ -285,6 +313,26 @@ export default function ClosetPage() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .mobile-menu-btn { display: block !important; }
+          .mobile-overlay { display: block !important; }
+          .sidebar { display: none; }
+          .sidebar-open {
+            display: block;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            z-index: 95;
+            width: 260px;
+          }
+        }
+        @media (min-width: 769px) {
+          .sidebar { display: block; }
+        }
+      `}</style>
     </div>
   )
 }
