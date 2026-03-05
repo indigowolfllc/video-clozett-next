@@ -5,6 +5,21 @@ type Drawer = { id: string; name: string; shelf_id: string }
 type Shelf = { id: string; name: string; drawers: Drawer[] }
 type Item = { id: string; url: string; title: string; thumbnail: string; site: string; is_playable: boolean; memo: string }
 
+function AdSlot({ type }: { type: "banner" | "card" }) {
+  if (type === "banner") {
+    return (
+      <div style={{ background: "#f0f0f0", border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 16, textAlign: "center", color: "#999", fontSize: 12 }}>
+        📢 広告スペース（728×90）
+      </div>
+    )
+  }
+  return (
+    <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12, background: "#fafafa", textAlign: "center", color: "#999", fontSize: 12 }}>
+      📢 広告（300×250）
+    </div>
+  )
+}
+
 export default function ClosetPage() {
   const [shelves, setShelves] = useState<Shelf[]>([])
   const [selectedDrawer, setSelectedDrawer] = useState<Drawer | null>(null)
@@ -48,6 +63,16 @@ export default function ClosetPage() {
     }
   }
 
+  const deleteShelf = async (id: string) => {
+    if (!confirm("この棚を削除しますか？中の引き出しも全て削除されます。")) return
+    await fetch("/api/shelves?id=" + id, { method: "DELETE" })
+    setShelves((prev) => prev.filter((s) => s.id !== id))
+    if (selectedDrawer && shelves.find((s) => s.id === id)?.drawers.find((d) => d.id === selectedDrawer.id)) {
+      setSelectedDrawer(null)
+      setItems([])
+    }
+  }
+
   const addDrawer = async (shelfId: string) => {
     if (!newDrawerName) return
     const res = await fetch("/api/drawers", {
@@ -64,6 +89,15 @@ export default function ClosetPage() {
     } else {
       setMessage(data.error || "エラー")
     }
+  }
+
+  const deleteDrawer = async (id: string, shelfId: string) => {
+    if (!confirm("この引き出しを削除しますか？")) return
+    await fetch("/api/drawers?id=" + id, { method: "DELETE" })
+    setShelves((prev) => prev.map((s) =>
+      s.id === shelfId ? { ...s, drawers: s.drawers.filter((d) => d.id !== id) } : s
+    ))
+    if (selectedDrawer?.id === id) { setSelectedDrawer(null); setItems([]) }
   }
 
   const renameShelf = async (id: string) => {
@@ -110,6 +144,8 @@ export default function ClosetPage() {
         setMemo("")
         setMessage("保存しました")
         setTimeout(() => setMessage(""), 3000)
+      } else {
+        setMessage(data.error || "エラーが発生しました")
       }
     } catch {
       setMessage("エラーが発生しました")
@@ -118,9 +154,13 @@ export default function ClosetPage() {
     }
   }
 
+  const deleteItem = async (id: string) => {
+    await fetch("/api/items?id=" + id, { method: "DELETE" })
+    setItems((prev) => prev.filter((i) => i.id !== id))
+  }
+
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif" }}>
-      {/* サイドバー */}
       <div style={{ width: 260, background: "#1a1a1a", color: "#fff", padding: 16, overflowY: "auto" }}>
         <h2 style={{ fontSize: 18, fontWeight: "bold", marginBottom: 16 }}>🗄 CloZett</h2>
 
@@ -138,6 +178,8 @@ export default function ClosetPage() {
                   <span style={{ flex: 1, fontWeight: "bold", fontSize: 14 }}>📦 {shelf.name}</span>
                   <button onClick={() => { setEditingShelf(shelf.id); setEditName(shelf.name) }}
                     style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: 12 }}>✏️</button>
+                  <button onClick={() => deleteShelf(shelf.id)}
+                    style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 12 }}>🗑</button>
                 </>
               )}
             </div>
@@ -158,6 +200,8 @@ export default function ClosetPage() {
                     </button>
                     <button onClick={() => { setEditingDrawer(drawer.id); setEditName(drawer.name) }}
                       style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 11 }}>✏️</button>
+                    <button onClick={() => deleteDrawer(drawer.id, shelf.id)}
+                      style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 11 }}>🗑</button>
                   </>
                 )}
               </div>
@@ -185,10 +229,10 @@ export default function ClosetPage() {
         {shelves.length >= 3 && <p style={{ fontSize: 11, color: "#666", marginTop: 8 }}>棚の上限（3つ）に達しました</p>}
       </div>
 
-      {/* メインエリア */}
       <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
         {selectedDrawer ? (
           <>
+            <AdSlot type="banner" />
             <h2 style={{ fontSize: 20, fontWeight: "bold", marginBottom: 16 }}>🗂 {selectedDrawer.name}</h2>
             <div style={{ background: "#f9f9f9", padding: 16, borderRadius: 8, marginBottom: 24 }}>
               <input type="text" placeholder="URLを貼り付け" value={url}
@@ -205,19 +249,24 @@ export default function ClosetPage() {
             </div>
 
             <div>
-              {items.map((item) => (
-                <div key={item.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12, display: "flex", gap: 12 }}>
-                  {item.thumbnail && <img src={item.thumbnail} alt={item.title} style={{ width: 120, height: 68, objectFit: "cover", borderRadius: 4 }} />}
-                  <div>
-                    <p style={{ fontWeight: "bold", marginBottom: 4 }}>{item.title}</p>
-                    {item.memo && <p style={{ color: "#666", fontSize: 14 }}>{item.memo}</p>}
-                    <p style={{ fontSize: 12, color: "#999" }}>{item.site}</p>
-                    {item.is_playable
-                      ? <span style={{ fontSize: 12, color: "green" }}>▶ 再生可</span>
-                      : <a href={item.url} target="_blank" style={{ fontSize: 12, color: "#666" }}>外部で開く</a>
-                    }
+              {items.map((item, index) => (
+                <>
+                  {index > 0 && index % 5 === 0 && <AdSlot key={"ad-" + index} type="card" />}
+                  <div key={item.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12, display: "flex", gap: 12, position: "relative" }}>
+                    {item.thumbnail && <img src={item.thumbnail} alt={item.title} style={{ width: 120, height: 68, objectFit: "cover", borderRadius: 4 }} />}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: "bold", marginBottom: 4 }}>{item.title}</p>
+                      {item.memo && <p style={{ color: "#666", fontSize: 14 }}>{item.memo}</p>}
+                      <p style={{ fontSize: 12, color: "#999" }}>{item.site}</p>
+                      {item.is_playable
+                        ? <span style={{ fontSize: 12, color: "green" }}>▶ 再生可</span>
+                        : <a href={item.url} target="_blank" style={{ fontSize: 12, color: "#666" }}>外部で開く</a>
+                      }
+                    </div>
+                    <button onClick={() => deleteItem(item.id)}
+                      style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16 }}>🗑</button>
                   </div>
-                </div>
+                </>
               ))}
             </div>
           </>
