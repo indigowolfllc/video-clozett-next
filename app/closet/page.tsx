@@ -16,22 +16,22 @@ export default function ClosetPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-  url,
-  drawer_id: "00000000-0000-0000-0000-000000000001",
-  user_id: "00000000-0000-0000-0000-000000000001",
-  memo,
-}),
+          url,
+          drawer_id: "00000000-0000-0000-0000-000000000001",
+          user_id: "00000000-0000-0000-0000-000000000001",
+          memo,
+        }),
       })
       const data = await res.json()
       if (data.success) {
         setItems((prev) => [data.item, ...prev])
         setUrl("")
         setMemo("")
-        setMessage("??????")
+        setMessage("保存しました")
         setTimeout(() => setMessage(""), 3000)
       }
     } catch {
-      setMessage("??????????")
+      setMessage("エラーが発生しました")
     } finally {
       setLoading(false)
     }
@@ -44,14 +44,14 @@ export default function ClosetPage() {
       <div style={{ background: "#f9f9f9", padding: 16, borderRadius: 8, marginBottom: 24 }}>
         <input
           type="text"
-          placeholder="URL?????"
+          placeholder="URLを貼り付け"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           style={{ width: "100%", padding: 8, marginBottom: 8, border: "1px solid #ddd", borderRadius: 4 }}
         />
         <input
           type="text"
-          placeholder="??(??)"
+          placeholder="メモ（任意）"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
           style={{ width: "100%", padding: 8, marginBottom: 8, border: "1px solid #ddd", borderRadius: 4 }}
@@ -61,7 +61,7 @@ export default function ClosetPage() {
           disabled={loading}
           style={{ background: "#333", color: "#fff", padding: "8px 24px", borderRadius: 4, border: "none", cursor: "pointer" }}
         >
-          {loading ? "???..." : "????"}
+          {loading ? "保存中..." : "保存する"}
         </button>
         {message && <p style={{ marginTop: 8, color: "green" }}>{message}</p>}
       </div>
@@ -75,8 +75,8 @@ export default function ClosetPage() {
               {item.memo && <p style={{ color: "#666", fontSize: 14 }}>{item.memo}</p>}
               <p style={{ fontSize: 12, color: "#999" }}>{item.site}</p>
               {item.is_playable
-                ? <span style={{ fontSize: 12, color: "green" }}>? ???</span>
-                : <a href={item.url} target="_blank" style={{ fontSize: 12, color: "#666" }}>?????</a>
+                ? <span style={{ fontSize: 12, color: "green" }}>▶ 再生可</span>
+                : <a href={item.url} target="_blank" style={{ fontSize: 12, color: "#666" }}>外部で開く</a>
               }
             </div>
           </div>
