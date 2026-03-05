@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { createClient } from "@/lib/supabaseClient"
 
 type Drawer = { id: string; name: string; shelf_id: string }
 type Shelf = { id: string; name: string; drawers: Drawer[] }
@@ -39,6 +40,10 @@ export default function ClosetPage() {
   const loadShelves = async () => {
     const res = await fetch("/api/shelves")
     const data = await res.json()
+    if (data.error === "Unauthorized") {
+      window.location.href = "/login"
+      return
+    }
     setShelves(data.shelves || [])
   }
 
@@ -130,12 +135,7 @@ export default function ClosetPage() {
       const res = await fetch("/api/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url,
-          drawer_id: selectedDrawer.id,
-          user_id: "00000000-0000-0000-0000-000000000001",
-          memo,
-        }),
+        body: JSON.stringify({ url, drawer_id: selectedDrawer.id, memo }),
       })
       const data = await res.json()
       if (data.success) {
@@ -159,10 +159,19 @@ export default function ClosetPage() {
     setItems((prev) => prev.filter((i) => i.id !== id))
   }
 
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = "/login"
+  }
+
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif" }}>
       <div style={{ width: 260, background: "#1a1a1a", color: "#fff", padding: 16, overflowY: "auto" }}>
-        <h2 style={{ fontSize: 18, fontWeight: "bold", marginBottom: 16 }}>🗄 CloZett</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: "bold" }}>🗄 CloZett</h2>
+          <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 12 }}>ログアウト</button>
+        </div>
 
         {shelves.map((shelf) => (
           <div key={shelf.id} style={{ marginBottom: 16 }}>
