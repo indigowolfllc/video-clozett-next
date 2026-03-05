@@ -1,6 +1,21 @@
+"use client"
 import Link from "next/link"
 
 export default function Home() {
+  const handleUpgrade = async (plan: string) => {
+    const res = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    })
+    const data = await res.json()
+    if (data.url) {
+      window.location.href = data.url
+    } else if (data.error === "Unauthorized") {
+      window.location.href = "/login"
+    }
+  }
+
   return (
     <div style={{ fontFamily: "sans-serif", color: "#1a1a1a" }}>
       {/* ナビ */}
@@ -63,30 +78,43 @@ export default function Home() {
         <h2 style={{ textAlign: "center", fontSize: 32, fontWeight: "bold", marginBottom: 48 }}>シンプルな料金体系</h2>
         <div style={{ display: "flex", gap: 24, maxWidth: 900, margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}>
           {[
-            { name: "Free", price: "¥0", features: ["棚3つ", "引き出し10個/棚", "URL 100件", "広告あり"], highlight: false },
-            { name: "Lite", price: "¥100/月", features: ["棚10つ", "引き出し30個/棚", "URL 500件", "広告あり"], highlight: false },
-            { name: "Standard", price: "¥200/月", features: ["棚30つ", "引き出し100個/棚", "URL 2,000件", "広告なし"], highlight: true },
-            { name: "Pro", price: "¥300/月", features: ["棚無制限", "引き出し無制限", "URL 無制限", "広告なし"], highlight: false },
-          ].map((plan) => (
-            <div key={plan.name} style={{
-              border: plan.highlight ? "2px solid #1a1a1a" : "1px solid #eee",
+            { name: "Free", price: "¥0", plan: "free", features: ["棚3つ", "引き出し10個/棚", "URL 100件", "広告あり"], highlight: false },
+            { name: "Lite", price: "¥100/月", plan: "lite", features: ["棚10つ", "引き出し30個/棚", "URL 500件", "広告あり"], highlight: false },
+            { name: "Standard", price: "¥200/月", plan: "standard", features: ["棚30つ", "引き出し100個/棚", "URL 2,000件", "広告なし"], highlight: true },
+            { name: "Pro", price: "¥300/月", plan: "pro", features: ["棚無制限", "引き出し無制限", "URL 無制限", "広告なし"], highlight: false },
+          ].map((p) => (
+            <div key={p.name} style={{
+              border: p.highlight ? "2px solid #1a1a1a" : "1px solid #eee",
               borderRadius: 12, padding: 24, width: 180, textAlign: "center",
-              background: plan.highlight ? "#1a1a1a" : "#fff",
-              color: plan.highlight ? "#fff" : "#1a1a1a",
+              background: p.highlight ? "#1a1a1a" : "#fff",
+              color: p.highlight ? "#fff" : "#1a1a1a",
             }}>
-              <h3 style={{ fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>{plan.name}</h3>
-              <p style={{ fontSize: 24, fontWeight: "bold", marginBottom: 16 }}>{plan.price}</p>
-              {plan.features.map((f) => (
-                <p key={f} style={{ fontSize: 13, marginBottom: 4, color: plan.highlight ? "#ccc" : "#666" }}>✓ {f}</p>
+              <h3 style={{ fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>{p.name}</h3>
+              <p style={{ fontSize: 24, fontWeight: "bold", marginBottom: 16 }}>{p.price}</p>
+              {p.features.map((f) => (
+                <p key={f} style={{ fontSize: 13, marginBottom: 4, color: p.highlight ? "#ccc" : "#666" }}>✓ {f}</p>
               ))}
-              <Link href="/closet" style={{
-                display: "block", marginTop: 16, padding: "8px 0",
-                background: plan.highlight ? "#fff" : "#1a1a1a",
-                color: plan.highlight ? "#1a1a1a" : "#fff",
-                borderRadius: 6, textDecoration: "none", fontSize: 14,
-              }}>
-                {plan.name === "Free" ? "無料で始める" : "選択する"}
-              </Link>
+              {p.plan === "free" ? (
+                <Link href="/closet" style={{
+                  display: "block", marginTop: 16, padding: "8px 0",
+                  background: "#1a1a1a", color: "#fff",
+                  borderRadius: 6, textDecoration: "none", fontSize: 14,
+                }}>
+                  無料で始める
+                </Link>
+              ) : (
+                <button
+                  onClick={() => handleUpgrade(p.plan)}
+                  style={{
+                    display: "block", width: "100%", marginTop: 16, padding: "8px 0",
+                    background: p.highlight ? "#fff" : "#1a1a1a",
+                    color: p.highlight ? "#1a1a1a" : "#fff",
+                    borderRadius: 6, border: "none", fontSize: 14, cursor: "pointer",
+                  }}
+                >
+                  選択する
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -103,9 +131,9 @@ export default function Home() {
 
       {/* フッター */}
       <footer style={{ textAlign: "center", padding: "24px", color: "#999", fontSize: 12, borderTop: "1px solid #eee" }}>
-  <p style={{ marginBottom: 8 }}>© 2025 Video CloZett. All rights reserved.</p>
-  <a href="/legal" style={{ color: "#999", textDecoration: "none" }}>利用規約・プライバシーポリシー</a>
-</footer>
+        <p style={{ marginBottom: 8 }}>© 2025 Video CloZett. All rights reserved.</p>
+        <a href="/legal" style={{ color: "#999", textDecoration: "none" }}>利用規約・プライバシーポリシー</a>
+      </footer>
     </div>
   )
 }
