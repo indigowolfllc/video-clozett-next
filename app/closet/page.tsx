@@ -16,11 +16,11 @@ export default function ClosetPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url,
-          drawer_id: "test-drawer",
-          user_id: "test-user",
-          memo,
-        }),
+  url,
+  drawer_id: "00000000-0000-0000-0000-000000000001",
+  user_id: "00000000-0000-0000-0000-000000000001",
+  memo,
+}),
       })
       const data = await res.json()
       if (data.success) {
