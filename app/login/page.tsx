@@ -7,7 +7,7 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "https://clozett.app/auth/callback",,
+        redirectTo: "https://clozett.app/auth/callback",
       },
     })
   }
