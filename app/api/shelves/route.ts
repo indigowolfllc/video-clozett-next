@@ -18,9 +18,7 @@ async function getUserId(): Promise<string | null> {
       cookies: {
         getAll() { return cookieStore.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
         },
       },
     }
@@ -42,13 +40,17 @@ export async function GET() {
   const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  const plan = await getUserPlan(userId)
+
   const { data, error } = await supabaseAdmin
     .from("shelves")
     .select("*, drawers(*)")
     .eq("user_id", userId)
     .order("order_index")
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ shelves: data })
+
+  return NextResponse.json({ shelves: data, plan })
 }
 
 export async function POST(req: NextRequest) {
@@ -63,14 +65,17 @@ export async function POST(req: NextRequest) {
     .from("shelves")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
+
   if (count && count >= limits.shelves) {
     return NextResponse.json({ error: "棚の上限に達しました（プランをアップグレードしてください）" }, { status: 403 })
   }
+
   const { data, error } = await supabaseAdmin
     .from("shelves")
     .insert({ user_id: userId, name })
     .select()
     .single()
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ shelf: data })
 }
@@ -87,6 +92,7 @@ export async function PATCH(req: NextRequest) {
     .eq("user_id", userId)
     .select()
     .single()
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ shelf: data })
 }
@@ -98,6 +104,7 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const id = searchParams.get("id")
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+
   const { error } = await supabaseAdmin.from("shelves").delete().eq("id", id).eq("user_id", userId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
