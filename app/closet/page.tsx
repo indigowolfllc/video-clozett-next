@@ -7,19 +7,30 @@ type Drawer = { id: string; name: string; shelf_id: string }
 type Shelf = { id: string; name: string; drawers: Drawer[] }
 type Item = { id: string; url: string; title: string; thumbnail: string; site: string; is_playable: boolean; memo: string }
 
-function AdSlot({ type, size = "full" }: { type: "banner" | "card"; size?: "full" | "reduced" | "minimal" }) {
-  const opacity = size === "minimal" ? 0.55 : size === "reduced" ? 0.75 : 1
-  const scale = size === "minimal" ? 0.7 : size === "reduced" ? 0.85 : 1
-  if (type === "banner") {
-    return (
-      <div style={{ background: "#f0f0f0", border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 16, textAlign: "center", color: "#999", fontSize: 12, opacity, transform: `scale(${scale})`, transformOrigin: "top left" }}>
-        📢 広告スペース（728×90）
-      </div>
-    )
-  }
+// 広告スロット（モック。AdSense審査通過後に本物に差し替え）
+function AdBanner({ size = "full" }: { size?: "full" | "reduced" | "minimal" }) {
+  const h = size === "minimal" ? 40 : size === "reduced" ? 60 : 90
+  const opacity = size === "minimal" ? 0.5 : size === "reduced" ? 0.75 : 1
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12, background: "#fafafa", textAlign: "center", color: "#999", fontSize: 12, opacity, transform: `scale(${scale})`, transformOrigin: "top left" }}>
-      📢 広告（300×250）
+    <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 6, height: h, display: "flex", alignItems: "center", justifyContent: "center", color: "#bbb", fontSize: 11, opacity, marginBottom: 12, overflow: "hidden" }}>
+      広告
+    </div>
+  )
+}
+
+// 保存完了ポップアップ（広告付き）
+function SaveSuccessModal({ onClose, adSize }: { onClose: () => void; adSize: "full" | "reduced" | "minimal" }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", textAlign: "center" }}>
+        <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
+        <p style={{ fontWeight: "bold", fontSize: 16, marginBottom: 4 }}>保存しました！</p>
+        <p style={{ color: "#888", fontSize: 13, marginBottom: 16 }}>URLをクローゼットに追加しました</p>
+        <AdBanner size={adSize} />
+        <button onClick={onClose} style={{ background: "#333", color: "#fff", border: "none", borderRadius: 6, padding: "8px 32px", cursor: "pointer", fontSize: 14 }}>
+          閉じる
+        </button>
+      </div>
     </div>
   )
 }
@@ -31,7 +42,8 @@ export default function ClosetPage() {
   const [url, setUrl] = useState("")
   const [memo, setMemo] = useState("")
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState("")
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const [newShelfName, setNewShelfName] = useState("")
   const [newDrawerName, setNewDrawerName] = useState("")
   const [editingShelf, setEditingShelf] = useState<string | null>(null)
@@ -45,10 +57,7 @@ export default function ClosetPage() {
   const loadShelves = async () => {
     const res = await fetch("/api/shelves")
     const data = await res.json()
-    if (data.error === "Unauthorized") {
-      window.location.href = "/login"
-      return
-    }
+    if (data.error === "Unauthorized") { window.location.href = "/login"; return }
     setShelves(data.shelves || [])
     if (data.plan) setUserPlan(data.plan)
   }
@@ -84,7 +93,7 @@ export default function ClosetPage() {
     const res = await fetch("/api/drawers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newDrawerName, shelf_id: shelfId }) })
     const data = await res.json()
     if (data.drawer) { setShelves((prev) => prev.map((s) => s.id === shelfId ? { ...s, drawers: [...s.drawers, data.drawer] } : s)); setNewDrawerName("") }
-    else { setMessage(data.error || "エラー") }
+    else { setErrorMessage(data.error || "エラー") }
   }
 
   const deleteDrawer = async (id: string, shelfId: string) => {
@@ -109,12 +118,19 @@ export default function ClosetPage() {
   const saveItem = async () => {
     if (!url || !selectedDrawer) return
     setLoading(true)
+    setErrorMessage("")
     try {
       const res = await fetch("/api/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url, drawer_id: selectedDrawer.id, memo }) })
       const data = await res.json()
-      if (data.success) { setItems((prev) => [data.item, ...prev]); setUrl(""); setMemo(""); setMessage("保存しました"); setTimeout(() => setMessage(""), 3000) }
-      else { setMessage(data.error || "エラーが発生しました") }
-    } catch { setMessage("エラーが発生しました") }
+      if (data.success) {
+        setItems((prev) => [data.item, ...prev])
+        setUrl("")
+        setMemo("")
+        setShowSaveModal(true) // 保存完了モーダルを表示（広告付き）
+      } else {
+        setErrorMessage(data.error || "エラーが発生しました")
+      }
+    } catch { setErrorMessage("エラーが発生しました") }
     finally { setLoading(false) }
   }
 
@@ -187,24 +203,32 @@ export default function ClosetPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif", position: "relative" }}>
+      {/* 保存完了モーダル（広告付き） */}
+      {showSaveModal && <SaveSuccessModal onClose={() => setShowSaveModal(false)} adSize={adSize} />}
+      {/* モバイルハンバーガー */}
       <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display: "none", position: "fixed", top: 12, left: 12, zIndex: 100, background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 18 }} className="mobile-menu-btn">☰</button>
       {sidebarOpen && (<div onClick={() => setSidebarOpen(false)} style={{ display: "none", position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90 }} className="mobile-overlay" />)}
+      {/* サイドバー */}
       <div style={{ flexShrink: 0 }} className={sidebarOpen ? "sidebar-open" : "sidebar"}><Sidebar /></div>
+      {/* メインエリア */}
       <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
         {selectedDrawer ? (
           <>
-            <AdSlot type="banner" size={adSize} />
+            {/* 上部バナー広告（小・常時表示） */}
+            <AdBanner size={adSize} />
             <h2 style={{ fontSize: 20, fontWeight: "bold", marginBottom: 16 }}>🗂 {selectedDrawer.name}</h2>
             <div style={{ background: "#f9f9f9", padding: 16, borderRadius: 8, marginBottom: 24 }}>
               <input type="text" placeholder="URLを貼り付け" value={url} onChange={(e) => setUrl(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, border: "1px solid #ddd", borderRadius: 4, boxSizing: "border-box" }} />
               <input type="text" placeholder="メモ（任意）" value={memo} onChange={(e) => setMemo(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, border: "1px solid #ddd", borderRadius: 4, boxSizing: "border-box" }} />
               <button onClick={saveItem} disabled={loading} style={{ background: "#333", color: "#fff", padding: "8px 24px", borderRadius: 4, border: "none", cursor: "pointer" }}>{loading ? "保存中..." : "保存する"}</button>
-              {message && <p style={{ marginTop: 8, color: "green" }}>{message}</p>}
+              {errorMessage && <p style={{ marginTop: 8, color: "red", fontSize: 13 }}>{errorMessage}</p>}
             </div>
             <div>
               {items.map((item, index) => (
                 <>
-                  {index > 0 && index % adsInterval === 0 && <AdSlot key={"ad-" + index} type="card" size={adSize} />}
+                  {index > 0 && index % adsInterval === 0 && (
+                    <AdBanner key={"ad-" + index} size={adSize} />
+                  )}
                   <div key={item.id} style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12, display: "flex", gap: 12, position: "relative" }}>
                     {item.thumbnail && <img src={item.thumbnail} alt={item.title} style={{ width: 120, height: 68, objectFit: "cover", borderRadius: 4 }} />}
                     <div style={{ flex: 1 }}>
