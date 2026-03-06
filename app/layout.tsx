@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Video CloZett",
     description: "動画URLをクローゼットに整理",
-    url: "https://video-clozett-next.vercel.app",
+    url: "https://clozett.app",
     siteName: "Video CloZett",
     locale: "ja_JP",
     type: "website",

@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: "https://video-clozett-next.vercel.app/closet?upgraded=true",
-      cancel_url: "https://video-clozett-next.vercel.app/#pricing",
+      success_url: "https://clozett.app/closet?upgraded=true",
+cancel_url: "https://clozett.app/#pricing",
       metadata: { userId },
     })
 
