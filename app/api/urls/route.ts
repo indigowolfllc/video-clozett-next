@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
     const { url, title } = await req.json()
     if (!url || !title) return new Response('url と title が必要です', { status: 400 })
 
+    // 入力バリデーション（サーバーサイド）
+    if (url.length > 2000) return new Response('URLは2000文字以内で入力してください', { status: 400 })
+    if (title.length > 100) return new Response('タイトルは100文字以内で入力してください', { status: 400 })
+
     const { data, error } = await supabase
       .from('urls')
       .insert([{ user_id: user.id, url, title }])
