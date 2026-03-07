@@ -1,10 +1,10 @@
 /**
  * Slack通知ユーティリティ
- * 環境変数 SLACK_WEBHOOK_URL に Incoming Webhook URLを設定してください
+ * SLACK_WEBHOOK_URL に Incoming Webhook URLが設定されている前提
  */
 export async function notifySlack(text: string): Promise<void> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-  if (!webhookUrl) return; // 未設定なら何もしない
+  if (!webhookUrl) return;
 
   try {
     await fetch(webhookUrl, {
@@ -13,7 +13,6 @@ export async function notifySlack(text: string): Promise<void> {
       body: JSON.stringify({ text }),
     });
   } catch {
-    // 通知失敗はログだけ。メイン処理を止めない
     console.error("[slack-notify] 通知送信失敗");
   }
 }
