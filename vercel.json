@@ -1,4 +1,10 @@
 {
   "version": 2,
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/cron/daily-summary",
+      "schedule": "0 23 * * *"
+    }
+  ]
 }
