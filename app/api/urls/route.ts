@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-async function createClient2() {
+async function createUserClient() {
   const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +29,7 @@ async function createClient2() {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient2()
+    const supabase = await createUserClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new Response('認証が必要です', { status: 401 })
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const plan = userData?.plan || 'free'
     const limits = getLimits(plan)
 
-    // 1日の保存数制限チェック（Proは無制限）
+    // 1日の保存数制限チェック（-1=無制限）
     if (limits.dailyUrls !== -1) {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     const insertData: Record<string, unknown> = { user_id: user.id, url, title }
     if (drawer_id) insertData.drawer_id = drawer_id
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('urls')
       .insert([insertData])
       .select()
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const supabase = await createClient2()
+    const supabase = await createUserClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new Response('認証が必要です', { status: 401 })
 
@@ -107,7 +107,7 @@ export async function GET() {
 
 export async function DELETE(req: Request) {
   try {
-    const supabase = await createClient2()
+    const supabase = await createUserClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new Response('認証が必要です', { status: 401 })
 
