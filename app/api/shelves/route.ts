@@ -18,7 +18,8 @@ async function getUserId(): Promise<string | null> {
       cookies: {
         getAll() { return cookieStore.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options))
         },
       },
     }
@@ -41,7 +42,6 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const plan = await getUserPlan(userId)
-
   const { data, error } = await supabaseAdmin
     .from("shelves")
     .select("*, drawers(*)")
@@ -49,7 +49,6 @@ export async function GET() {
     .order("order_index")
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
   return NextResponse.json({ shelves: data, plan })
 }
 
@@ -58,6 +57,15 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { name } = await req.json()
+
+  // 入力バリデーション
+  if (!name || typeof name !== "string") {
+    return NextResponse.json({ error: "棚の名前を入力してください" }, { status: 400 })
+  }
+  if (name.length > 50) {
+    return NextResponse.json({ error: "棚の名前は50文字以内で入力してください" }, { status: 400 })
+  }
+
   const plan = await getUserPlan(userId)
   const limits = getLimits(plan)
 
@@ -67,7 +75,10 @@ export async function POST(req: NextRequest) {
     .eq("user_id", userId)
 
   if (count && count >= limits.shelves) {
-    return NextResponse.json({ error: "棚の上限に達しました（プランをアップグレードしてください）" }, { status: 403 })
+    return NextResponse.json(
+      { error: "棚の上限に達しました（プランをアップグレードしてください）" },
+      { status: 403 }
+    )
   }
 
   const { data, error } = await supabaseAdmin
@@ -85,6 +96,15 @@ export async function PATCH(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id, name } = await req.json()
+
+  // 入力バリデーション
+  if (!name || typeof name !== "string") {
+    return NextResponse.json({ error: "棚の名前を入力してください" }, { status: 400 })
+  }
+  if (name.length > 50) {
+    return NextResponse.json({ error: "棚の名前は50文字以内で入力してください" }, { status: 400 })
+  }
+
   const { data, error } = await supabaseAdmin
     .from("shelves")
     .update({ name })
@@ -109,3 +129,8 @@ export async function DELETE(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
+```
+
+コミットメッセージ：
+```
+feat: shelvesルートにサーバーサイドバリデーション追加（名前50文字以内）
