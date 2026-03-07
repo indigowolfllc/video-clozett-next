@@ -4,12 +4,13 @@ export const PLAN_LIMITS: Record<Plan, {
   shelves: number
   drawers: number
   items: number
-  adsInterval: number // 広告表示間隔（件ごと）5=フル, 10=少なめ, 20=最小
+  adsInterval: number  // 広告表示間隔（件ごと）5=フル, 10=少なめ, 20=最小
+  dailyUrls: number    // 1日のURL保存上限（-1=無制限）
 }> = {
-  free:     { shelves: 3,      drawers: 10,     items: 100,    adsInterval: 5  },
-  lite:     { shelves: 10,     drawers: 30,     items: 500,    adsInterval: 5  },
-  standard: { shelves: 30,     drawers: 100,    items: 2000,   adsInterval: 10 },
-  pro:      { shelves: 999999, drawers: 999999, items: 999999, adsInterval: 20 },
+  free:     { shelves: 3,      drawers: 10,     items: 100,    adsInterval: 5,  dailyUrls: 30 },
+  lite:     { shelves: 10,     drawers: 30,     items: 500,    adsInterval: 5,  dailyUrls: 100 },
+  standard: { shelves: 30,     drawers: 100,    items: 2000,   adsInterval: 10, dailyUrls: 500 },
+  pro:      { shelves: 999999, drawers: 999999, items: 999999, adsInterval: 20, dailyUrls: -1 },
 }
 
 // プランの順序（格上げ計算に使用）
